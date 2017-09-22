@@ -118,6 +118,71 @@ contract FoodCoin is SafeMath, Token, Logging, Destructible {
 		// Allow user to control someone else's token balance (up to a certain token limit)
 		mapping ( address => mapping ( address => uint256 ) ) allowed;
 		
+		// mapping, containing full list of accounts and their token balances - used to export the list into an external system 
+		mapping ( uint256 => address ) balancesListAddress;
+		
+		// total number of accounts
+		uint256 public balancesListAddressCount = 0;
+		
+		// object containing detailed account information
+		struct ClientInfo
+		{
+			// account serial number
+			uint256 listNumber;
+			// date when account was created
+			uint256 addTimestamp;
+			// creator's address
+			address addAddress;
+			// Internal ID on foodcoin.io
+			string extId;
+			// associated email address
+			string extEmail;
+		}
+		// mapping containing a list of all accounts
+		mapping ( address => ClientInfo ) clientInfoList;
+		
+		// Adding tokens to user's account, and add account to the list if not previously present
+		function _addClientAddress( address _clientAddress, uint256 _amount, string _extId, string _extEmail ) internal
+		{
+			// check if this address is not on the list yet
+			if ( clientInfoList[ _clientAddress ].addTimestamp <= 0 )
+			{
+				// add it to the list
+				balancesListAddress[ balancesListAddressCount ] = _clientAddress;
+				// create an object with account information
+				clientInfoList[ _clientAddress ] = ClientInfo({
+					listNumber: balancesListAddressCount,
+					addTimestamp: now,
+					addAddress: msg.sender,
+					extId: _extId,
+					extEmail: _extEmail
+				});
+				// increment account counter
+				balancesListAddressCount++;
+			}
+			// add tokens to the account 
+			balances[ _clientAddress ] += _amount;
+		}
+		
+		// get account informaton by pulling it from the list
+		function getNumberAddress( uint256 _getNumberInfo ) constant onlyOwner returns ( address )
+		{
+			return balancesListAddress[ _getNumberInfo ];
+		}
+		
+		// return detailed account information by address
+		function getAccountInfo( address _getAddress ) constant onlyOwner returns ( uint256 listNumber, uint256 addTimestamp, string extId, string extEmail, address addAddress)
+		{
+			// verify that this is a valid account first and if it's present in the list of accounts
+			require( clientInfoList[ _getAddress ].addTimestamp > 0 );
+			// return detailed informaton 
+			listNumber = clientInfoList[ _getAddress ].listNumber;
+			addTimestamp = clientInfoList[ _getAddress ].addTimestamp;
+			extId = clientInfoList[ _getAddress ].extId;
+			extEmail = clientInfoList[ _getAddress ].extEmail;
+			addAddress = clientInfoList[ _getAddress ].addAddress;
+		}
+			
 		// Internal function that performs the actual transfer (cannot be called externally)
 		function _transfer( address _from, address _to, uint256 _value ) internal returns ( bool success )
 		{
@@ -127,7 +192,7 @@ contract FoodCoin is SafeMath, Token, Logging, Destructible {
 				// Subtract from sender account
 				balances[ _from ] -= _value;
 				// Add to receiver's account
-				balances[ _to ] += _value;
+				_addClientAddress( _to, _value, '', '' );
 				// Perform the transfer
 				Transfer( _from, _to, _value, msg.sender );
 				// Log the transaction
@@ -195,7 +260,7 @@ contract FoodCoin is SafeMath, Token, Logging, Destructible {
 		}
 		
 		// Generate tokens for a given recipient
-		function generateTokens(address _reciever, uint256 _amount) external onlyOwner
+		function generateTokens(address _reciever, uint256 _amount, string _extId, string _extEmail) external onlyOwner
 		{
 			// Check if it's a non-zero address
 			require( _reciever != address(0) );
@@ -203,7 +268,7 @@ contract FoodCoin is SafeMath, Token, Logging, Destructible {
 			if ( !TDEStopOn )
 			{
 				// Add tokens to a given address
-				balances[_reciever] += _amount;
+				_addClientAddress( _reciever, _amount, _extId, _extEmail );
 				// increase total supply of tokens
 				totalSupply = safeAdd( totalSupply, _amount );
 				// Initiate the event notification for the token generation
@@ -219,7 +284,7 @@ contract FoodCoin is SafeMath, Token, Logging, Destructible {
 				// Throw an error if the new number exceed maximum available tokens
 				require( tokenCreationCap < checkedSupply );
 				// If no error, add generated tokens to a given address
-				balances[ _reciever ] += _amount;
+				_addClientAddress( _reciever, _amount, _extId, _extEmail );
 				// increase total supply of tokens
 				totalSupply = checkedSupply;
 				// Initiate the event notification for the token generation

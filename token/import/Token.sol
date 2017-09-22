@@ -1,23 +1,23 @@
 /*
-	Прототип токен контракта
+	Protototype of a token smart contract
 */
 contract Token {
-	// общее кол-во токенов наданный момент
+	// total number of tokens currently avaiable
 	uint256 public totalSupply;
-	// потолок на кол-во токенов
+	// limit on the maximum number of tokens that will be issued 
 	uint256 public tokenCreationCap = 0;
-	// сколько токенов на конкретном адресе
+	// number of tokens at a given account
 	function balanceOf(address _owner) constant returns (uint256 balance);
-	// перевод токенов с адреса "вуызвавшего контракт" на указанный адрес
+	// transfer tokens from the calling account to another account
 	function transfer(address _to, uint256 _value) returns (bool success);
-	// перевод токенов с адреса на адрес (механизм переводов для делегированных счетов)
+	// transfer tokens from one account to another (delegated transfer)
 	function transferFrom(address _from, address _to, uint256 _value) returns (bool success);
-	// выделение делегирования на управление счета
+	// approve delegation of token management - allow another user to transfer up to _value tokens to any destination
 	function approve(address _spender, uint256 _value) returns (bool success);
-	// показывает, сколько один счет может снимать средств с другого счета
+	// check how many tokens can one account transfer from the owner to external account
 	function allowance(address _owner, address _spender) constant returns (uint256 remaining);
-	// событие "перевод токенов"
+	// Event defintion: transfer  tokens
 	event Transfer(address indexed _from, address indexed _to, uint256 _value);
-	// событие "делегирование средств", для функции approve()
+	// Event defintion: approval to perform transfers on behalf of another user
 	event Approval(address indexed _owner, address indexed _spender, uint256 _value);
 }
